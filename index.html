@@ -33,6 +33,7 @@
             justify-content: center;
             margin: 0;
             padding: 0;
+            touch-action: none; /* Prevent browser gestures */
         }
 
         /* Phone Frame Container */
@@ -147,7 +148,6 @@
     <div class="phone-frame">
         
         <!-- Header / Status Bar Area -->
-        <!-- Added pt-safe to handle notch/status bar -->
         <div class="absolute top-0 w-full z-40 px-6 pb-3 pt-safe flex justify-between items-center bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
             <div class="flex items-center gap-2" onclick="switchTab('home')">
                 <div class="bg-blue-600 text-white p-1.5 rounded-lg">
@@ -167,7 +167,6 @@
         </div>
 
         <!-- MAIN CONTENT AREA -->
-        <!-- Adjusted padding-top to account for the larger/safe header -->
         <div id="main-content" class="flex-1 relative overflow-hidden bg-gray-50 pt-[80px] pb-[80px]">
             
             <!-- VIEW 1: HOME (Landing) -->
@@ -645,6 +644,52 @@
             mapState.zoomLevel = 1;
             updateMapTransform();
         }
+
+        // --- Pinch to Zoom Logic (Mobile) ---
+        const rideView = document.getElementById('view-ride');
+        let initialPinchDist = 0;
+        let initialZoom = 1;
+
+        rideView.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                initialPinchDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                initialZoom = mapState.zoomLevel;
+                // Disable transition for instant feedback during pinch
+                mapContainer.style.transition = 'none';
+            }
+        }, { passive: false });
+
+        rideView.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const currentDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                
+                if (initialPinchDist > 0) {
+                    const scale = currentDist / initialPinchDist;
+                    let newZoom = initialZoom * scale;
+                    // Clamp zoom level
+                    newZoom = Math.max(0.6, Math.min(newZoom, 3));
+                    
+                    mapState.zoomLevel = newZoom;
+                    // Direct update without transition
+                    const finalScale = mapState.baseScale * mapState.zoomLevel;
+                    mapContainer.style.transform = `scale(${finalScale}) translate(${mapState.baseX}%, ${mapState.baseY}%)`;
+                }
+            }
+        }, { passive: false });
+
+        rideView.addEventListener('touchend', (e) => {
+            // Re-enable smooth transition
+            mapContainer.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        });
+
 
         destSelect.addEventListener('change', (e) => {
             const dest = e.target.value;
