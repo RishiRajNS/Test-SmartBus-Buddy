@@ -1,0 +1,5 @@
+{
+  "name": "SmartBus Buddy",
+  "description": "AI-powered commute copilot that predicts bus arrivals, crowd levels, and provides smart recommendations.",
+  "requestFramePermissions": []
+}
