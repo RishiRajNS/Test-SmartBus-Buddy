@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SmartBus Buddy - Trivandrum</title>
     
     <!-- Tailwind CSS -->
@@ -17,33 +17,53 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sab: env(safe-area-inset-bottom);
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f3f4f6;
-            height: 100vh;
+            background-color: #f3f4f6; /* Light gray background for desktop */
+            height: 100dvh; /* Dynamic Viewport Height for Mobile Browsers */
             width: 100vw;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0;
+            padding: 0;
         }
 
-        /* Phone Frame */
+        /* Phone Frame Container */
         .phone-frame {
-            width: 100%;
-            height: 100%;
-            background: white;
             position: relative;
+            background: white;
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
 
+        /* MOBILE STYLES (Default) */
+        @media (max-width: 767px) {
+            body {
+                background-color: white; /* Seamless look on mobile */
+            }
+            .phone-frame {
+                width: 100%;
+                height: 100%;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
+
+        /* DESKTOP STYLES (Simulation) */
         @media (min-width: 768px) {
             .phone-frame {
                 width: 400px;
-                height: 800px;
+                height: 800px; /* Fixed height for demo on desktop */
+                max-height: 90vh;
                 border-radius: 40px;
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 border: 8px solid #1f2937;
@@ -63,7 +83,8 @@
             top: 0;
             left: 0;
             z-index: 0;
-            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-origin: center center;
         }
 
         /* Map Pins */
@@ -105,9 +126,20 @@
         .bottom-sheet {
             transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
         }
+        
+        /* Sheet States */
+        .sheet-hidden { transform: translateY(110%); }
+        .sheet-full { transform: translateY(0%); }
+        .sheet-peek { transform: translateY(85%); }
 
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Utilities for Safe Area */
+        .pt-safe { padding-top: max(16px, var(--sat)); }
+        .pb-safe { padding-bottom: max(16px, var(--sab)); }
+        .top-safe { top: max(0px, var(--sat)); }
+        
     </style>
 </head>
 <body>
@@ -115,60 +147,95 @@
     <div class="phone-frame">
         
         <!-- Header / Status Bar Area -->
-        <div class="absolute top-0 w-full z-40 px-6 py-4 flex justify-between items-center bg-white/90 backdrop-blur-sm border-b border-gray-100">
-            <div class="flex items-center gap-2">
+        <!-- Added pt-safe to handle notch/status bar -->
+        <div class="absolute top-0 w-full z-40 px-6 pb-3 pt-safe flex justify-between items-center bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+            <div class="flex items-center gap-2" onclick="switchTab('home')">
                 <div class="bg-blue-600 text-white p-1.5 rounded-lg">
                     <i data-lucide="bus" class="w-4 h-4"></i>
                 </div>
-                <h1 class="font-bold text-gray-900 tracking-tight">SmartBus Buddy</h1>
+                <h1 class="font-bold text-gray-900 tracking-tight text-lg">SmartBus Buddy</h1>
             </div>
-            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <i data-lucide="user" class="w-4 h-4 text-gray-600"></i>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleNotifications()" class="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i data-lucide="bell" class="w-5 h-5 text-gray-600"></i>
+                    <span class="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                </button>
+                <button onclick="toggleProfile()" class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center border border-gray-200 overflow-hidden">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Profile" />
+                </button>
             </div>
         </div>
 
         <!-- MAIN CONTENT AREA -->
-        <div id="main-content" class="flex-1 relative overflow-hidden bg-gray-50 pt-[70px] pb-[80px]">
+        <!-- Adjusted padding-top to account for the larger/safe header -->
+        <div id="main-content" class="flex-1 relative overflow-hidden bg-gray-50 pt-[80px] pb-[80px]">
             
             <!-- VIEW 1: HOME (Landing) -->
-            <div id="view-home" class="h-full overflow-y-auto px-6 py-4 page-enter">
-                <div class="bg-blue-600 rounded-3xl p-6 text-white shadow-lg mb-6 relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div id="view-home" class="h-full overflow-y-auto px-6 py-4 page-enter pb-24">
+                
+                <!-- Live Alert Banner -->
+                <div class="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-6 flex items-start gap-3 shadow-sm">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-orange-500 mt-0.5"></i>
+                    <div>
+                        <div class="text-xs font-bold text-orange-700 uppercase mb-0.5">Service Alert</div>
+                        <p class="text-xs text-orange-600 leading-tight">Heavy traffic at Palayam Junction. Expect delays of 10-15 mins on City Circular routes.</p>
+                    </div>
+                </div>
+
+                <div class="bg-blue-600 rounded-3xl p-6 text-white shadow-lg mb-6 relative overflow-hidden group cursor-pointer transition-transform active:scale-95" onclick="switchTab('ride')">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
                     <div class="absolute -left-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                    <h2 class="text-2xl font-bold mb-2">Trivandrum's Smartest Commute</h2>
-                    <p class="text-blue-100 text-sm mb-4">Real-time ETA, crowd prediction & digital ticketing for KSRTC.</p>
-                    <button onclick="switchTab('ride')" class="bg-white text-blue-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-blue-50 transition-colors">
-                        Find My Bus
+                    <h2 class="text-2xl font-bold mb-2">Where to today?</h2>
+                    <p class="text-blue-100 text-sm mb-4">Tap to start your commute</p>
+                    <div class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg text-xs font-medium backdrop-blur-sm border border-white/10">
+                        <i data-lucide="search" class="w-3 h-3"></i>
+                        <span>Search Destination</span>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="flex gap-3 mb-6">
+                    <button onclick="quickLoad('Technopark')" class="flex-1 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 active:bg-gray-50 transition-colors">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                            <i data-lucide="briefcase" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-xs font-bold text-gray-700">Work</span>
+                    </button>
+                    <button onclick="quickLoad('Kowdiar')" class="flex-1 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 active:bg-gray-50 transition-colors">
+                        <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                            <i data-lucide="home" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-xs font-bold text-gray-700">Home</span>
+                    </button>
+                    <button onclick="quickLoad('LuluMall')" class="flex-1 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 active:bg-gray-50 transition-colors">
+                        <div class="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600">
+                            <i data-lucide="star" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-xs font-bold text-gray-700">Saved</span>
                     </button>
                 </div>
 
-                <h3 class="font-bold text-gray-800 mb-4">Why use SmartBus?</h3>
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="bg-green-100 w-8 h-8 rounded-full flex items-center justify-center text-green-600 mb-2">
-                            <i data-lucide="clock" class="w-4 h-4"></i>
-                        </div>
-                        <div class="font-bold text-gray-900 text-sm">Save Time</div>
-                        <div class="text-xs text-gray-500">Live ETAs</div>
-                    </div>
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="bg-orange-100 w-8 h-8 rounded-full flex items-center justify-center text-orange-600 mb-2">
-                            <i data-lucide="users" class="w-4 h-4"></i>
-                        </div>
-                        <div class="font-bold text-gray-900 text-sm">Crowd Check</div>
-                        <div class="text-xs text-gray-500">Avoid Rush</div>
-                    </div>
-                </div>
-
-                <h3 class="font-bold text-gray-800 mb-4">Recent Routes</h3>
+                <h3 class="font-bold text-gray-800 mb-4 flex justify-between items-center px-1">
+                    Recent Routes
+                    <span class="text-xs text-blue-600 font-medium">View All</span>
+                </h3>
                 <div class="space-y-3">
-                    <div class="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3 shadow-sm">
+                    <button onclick="quickLoad('Technopark')" class="w-full bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3 shadow-sm hover:border-blue-200 transition-all text-left">
                         <div class="bg-gray-100 p-2 rounded-lg"><i data-lucide="history" class="w-4 h-4 text-gray-500"></i></div>
-                        <div>
+                        <div class="flex-1">
                             <div class="font-bold text-sm text-gray-900">East Fort → Technopark</div>
                             <div class="text-xs text-gray-500">Yesterday, 9:00 AM</div>
                         </div>
-                    </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                    </button>
+                    <button onclick="quickLoad('LuluMall')" class="w-full bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3 shadow-sm hover:border-blue-200 transition-all text-left">
+                        <div class="bg-gray-100 p-2 rounded-lg"><i data-lucide="history" class="w-4 h-4 text-gray-500"></i></div>
+                        <div class="flex-1">
+                            <div class="font-bold text-sm text-gray-900">East Fort → Lulu Mall</div>
+                            <div class="text-xs text-gray-500">Mon, 5:30 PM</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                    </button>
                 </div>
             </div>
 
@@ -233,6 +300,19 @@
                     </div>
                 </div>
 
+                <!-- Map Controls -->
+                <div class="absolute right-4 bottom-[30%] flex flex-col gap-2 z-10">
+                    <button class="w-10 h-10 bg-white rounded-xl shadow-md flex items-center justify-center text-gray-600 active:bg-gray-50" onclick="zoomIn()">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                    <button class="w-10 h-10 bg-white rounded-xl shadow-md flex items-center justify-center text-gray-600 active:bg-gray-50" onclick="zoomOut()">
+                        <i data-lucide="minus" class="w-5 h-5"></i>
+                    </button>
+                    <button class="w-10 h-10 bg-blue-600 text-white rounded-xl shadow-md flex items-center justify-center active:bg-blue-700 mt-2" onclick="recenterMap()">
+                        <i data-lucide="navigation" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
                 <!-- Floating Search Bar -->
                 <div class="absolute top-4 left-4 right-4 z-10">
                     <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-2">
@@ -244,29 +324,33 @@
                         <div class="flex items-center px-2 relative">
                             <div class="w-2 h-2 rounded-full bg-red-500 mr-3"></div>
                             <span class="text-xs font-bold text-gray-500 w-12">TO</span>
-                            <select id="destination-select" class="flex-1 bg-transparent text-sm font-bold text-gray-900 outline-none">
+                            <select id="destination-select" class="flex-1 bg-transparent text-sm font-bold text-gray-900 outline-none appearance-none">
                                 <option value="" selected disabled>Select Destination</option>
                                 <option value="Technopark">Technopark Phase 1</option>
                                 <option value="LuluMall">Lulu Mall TVM</option>
                                 <option value="Kowdiar">Kowdiar Palace</option>
                             </select>
+                             <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 absolute right-2 pointer-events-none"></i>
                         </div>
                     </div>
                 </div>
 
-                <!-- Bottom Sheet (Results) -->
-                <div id="bottom-sheet" class="absolute bottom-0 left-0 w-full bg-white rounded-t-[30px] shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-20 transform translate-y-[110%] bottom-sheet h-[60%] flex flex-col">
-                    <div class="w-full flex justify-center pt-3 pb-1" id="sheet-handle">
-                        <div class="w-12 h-1.5 bg-gray-200 rounded-full"></div>
+                <!-- Collapsible Bottom Sheet (Results) -->
+                <div id="bottom-sheet" class="absolute bottom-0 left-0 w-full bg-white rounded-t-[30px] shadow-[0_-5px_40px_rgba(0,0,0,0.15)] z-20 sheet-hidden bottom-sheet h-[85%] flex flex-col border-t border-gray-100">
+                    <!-- Drag Handle / Toggle -->
+                    <div class="w-full flex flex-col items-center pt-3 pb-1 cursor-pointer bg-white rounded-t-[30px] hover:bg-gray-50 transition-colors" onclick="toggleSheet()">
+                        <div class="w-12 h-1.5 bg-gray-300 rounded-full mb-2"></div>
+                        <span id="sheet-hint" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tap to View Map</span>
                     </div>
                     
-                    <div class="flex-1 overflow-y-auto px-6 pb-20 hide-scrollbar pt-2">
+                    <div class="flex-1 overflow-y-auto px-6 pb-24 hide-scrollbar pt-2">
                         <div class="flex justify-between items-end mb-4">
                             <div>
                                 <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">Best Route</div>
                                 <h2 id="result-title" class="text-xl font-bold text-gray-900">Technopark</h2>
                             </div>
-                            <div class="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs font-bold">
+                            <div class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+                                <i data-lucide="clock" class="w-3 h-3"></i>
                                 <span id="result-eta">45 min</span>
                             </div>
                         </div>
@@ -275,27 +359,34 @@
                         <div id="bus-list" class="space-y-4">
                             <!-- JS Injected Cards -->
                         </div>
+                        
+                        <div class="mt-8 text-center">
+                            <p class="text-xs text-gray-400">Prices and times are estimated based on live traffic.</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- VIEW 3: IMPACT (Stats) -->
-            <div id="view-impact" class="h-full overflow-y-auto px-6 py-4 hidden page-enter">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">Impact Tracker</h2>
+            <div id="view-impact" class="h-full overflow-y-auto px-6 py-4 hidden page-enter pb-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Your Impact</h2>
                 
-                <div class="bg-gray-900 rounded-3xl p-6 text-white mb-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="text-gray-400 text-sm">CO2 Saved</div>
-                        <i data-lucide="leaf" class="text-green-400 w-5 h-5"></i>
+                <div class="bg-gray-900 rounded-3xl p-6 text-white mb-6 shadow-xl relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
+                    <div class="flex items-center justify-between mb-4 relative z-10">
+                        <div class="text-gray-400 text-sm font-medium">CO2 Saved</div>
+                        <div class="bg-green-500/20 p-2 rounded-lg">
+                            <i data-lucide="leaf" class="text-green-400 w-5 h-5"></i>
+                        </div>
                     </div>
                     <div class="text-4xl font-bold mb-1">12.5 kg</div>
-                    <div class="text-sm text-gray-400">Equivalent to planting 2 trees</div>
-                    <div class="w-full bg-gray-700 h-2 rounded-full mt-4">
-                        <div class="bg-green-500 h-2 rounded-full" style="width: 65%"></div>
+                    <div class="text-sm text-gray-400 mb-4">Equivalent to planting 2 trees</div>
+                    <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-gradient-to-r from-green-500 to-emerald-400 h-2 rounded-full" style="width: 65%"></div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4 mb-6">
                      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
                         <div class="text-3xl font-bold text-blue-600 mb-1">15</div>
                         <div class="text-xs font-bold text-gray-500 uppercase">Rides taken</div>
@@ -305,11 +396,92 @@
                         <div class="text-xs font-bold text-gray-500 uppercase">Money Saved</div>
                     </div>
                 </div>
+
+                <h3 class="font-bold text-gray-800 mb-4">Achievements</h3>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 opacity-100">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="medal" class="w-6 h-6 text-yellow-600"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-gray-900 text-sm">Early Bird</div>
+                        <div class="text-xs text-gray-500">Took 5 rides before 8 AM</div>
+                    </div>
+                </div>
             </div>
 
         </div>
 
-        <!-- Success Modal (Hidden by default) -->
+        <!-- NOTIFICATIONS MODAL -->
+        <div id="notifications-modal" class="absolute inset-0 bg-black/20 z-50 hidden backdrop-blur-sm flex justify-end">
+            <div class="w-3/4 h-full bg-white shadow-2xl p-6 page-enter pt-safe">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold">Notifications</h2>
+                    <button onclick="toggleNotifications()" class="p-2 hover:bg-gray-100 rounded-full">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                        <div class="flex gap-2 mb-1">
+                            <i data-lucide="bus" class="w-4 h-4 text-blue-600"></i>
+                            <span class="text-xs font-bold text-blue-700">Arriving Soon</span>
+                        </div>
+                        <p class="text-xs text-gray-600">Bus CC-01 is 2 mins away from East Fort.</p>
+                        <span class="text-[10px] text-gray-400 mt-1 block">Just now</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                        <div class="flex gap-2 mb-1">
+                            <i data-lucide="ticket" class="w-4 h-4 text-purple-600"></i>
+                            <span class="text-xs font-bold text-purple-700">Ticket Confirmed</span>
+                        </div>
+                        <p class="text-xs text-gray-600">Payment of ₹20 successful for ride to Lulu Mall.</p>
+                        <span class="text-[10px] text-gray-400 mt-1 block">2 hours ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE MODAL -->
+        <div id="profile-modal" class="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-6 hidden backdrop-blur-sm">
+             <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative shadow-2xl">
+                 <button onclick="toggleProfile()" class="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full">
+                    <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+                </button>
+                 
+                 <div class="flex flex-col items-center mb-6">
+                     <div class="w-20 h-20 rounded-full bg-gray-200 mb-3 border-4 border-white shadow-lg overflow-hidden">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Profile" />
+                     </div>
+                     <h2 class="text-xl font-bold text-gray-900">Arjun Nair</h2>
+                     <p class="text-sm text-gray-500">Student • Pass Holder</p>
+                 </div>
+
+                 <!-- Wallet Card -->
+                 <div class="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-5 text-white shadow-lg mb-4">
+                     <div class="flex justify-between items-start mb-6">
+                         <div>
+                             <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Smart Wallet</div>
+                             <div class="text-2xl font-bold">₹1,240.00</div>
+                         </div>
+                         <i data-lucide="wallet" class="w-6 h-6 text-gray-400"></i>
+                     </div>
+                     <button class="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold transition-colors">Top Up Balance</button>
+                 </div>
+
+                 <div class="space-y-2">
+                     <button class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                         <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i data-lucide="ticket" class="w-4 h-4"></i></div>
+                         <span class="text-sm font-bold text-gray-700">My Passes</span>
+                     </button>
+                     <button class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                         <div class="bg-purple-100 p-2 rounded-lg text-purple-600"><i data-lucide="settings" class="w-4 h-4"></i></div>
+                         <span class="text-sm font-bold text-gray-700">Settings</span>
+                     </button>
+                 </div>
+             </div>
+        </div>
+
+        <!-- Success Modal (Booking) -->
         <div id="success-modal" class="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-6 hidden backdrop-blur-sm">
             <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center transform scale-90 transition-transform shadow-2xl">
                 <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
@@ -328,7 +500,7 @@
         </div>
 
         <!-- Bottom Navigation -->
-        <div class="absolute bottom-0 w-full bg-white border-t border-gray-100 h-[80px] flex justify-around items-start pt-4 z-40">
+        <div class="absolute bottom-0 w-full bg-white border-t border-gray-100 h-[80px] flex justify-around items-start pt-4 z-40 pb-safe">
             <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center gap-1 w-16 group" data-tab="home">
                 <i data-lucide="home" class="w-6 h-6 text-gray-400 group-[.active]:text-blue-600 transition-colors"></i>
                 <span class="text-[10px] font-bold text-gray-400 group-[.active]:text-blue-600">Home</span>
@@ -378,24 +550,43 @@
 
         // --- Tab Switching ---
         function switchTab(tabId) {
-            // Hide all views
             ['home', 'ride', 'impact'].forEach(id => {
                 document.getElementById('view-' + id).classList.add('hidden');
             });
-            // Show selected
             document.getElementById('view-' + tabId).classList.remove('hidden');
             
-            // Update Nav Buttons
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if(btn.dataset.tab === tabId) btn.classList.add('active');
             });
-
-            // Refresh Icons because of DOM display changes
             lucide.createIcons();
         }
 
-        // --- Demo Logic ---
+        // --- Notifications & Profile ---
+        function toggleNotifications() {
+            const modal = document.getElementById('notifications-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function toggleProfile() {
+            const modal = document.getElementById('profile-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        // --- Quick Load Logic (Home Page) ---
+        function quickLoad(destination) {
+            switchTab('ride');
+            // Simulate slight delay for effect
+            setTimeout(() => {
+                const select = document.getElementById('destination-select');
+                select.value = destination;
+                // Trigger change event manually
+                const event = new Event('change');
+                select.dispatchEvent(event);
+            }, 300);
+        }
+
+        // --- Map & Sheet Logic ---
         const destSelect = document.getElementById('destination-select');
         const mapContainer = document.getElementById('map-container');
         const bottomSheet = document.getElementById('bottom-sheet');
@@ -403,60 +594,107 @@
         const routeLine = document.getElementById('route-line');
         const movingBus = document.getElementById('moving-bus');
         const busAnimation = document.getElementById('bus-animation');
+        
+        let isSheetFull = true;
+        
+        // Map State
+        let mapState = {
+            baseScale: 1.2,
+            baseX: 0,
+            baseY: 0,
+            zoomLevel: 1
+        };
+
+        function updateMapTransform() {
+            const finalScale = mapState.baseScale * mapState.zoomLevel;
+            mapContainer.style.transform = `scale(${finalScale}) translate(${mapState.baseX}%, ${mapState.baseY}%)`;
+        }
+
+        function zoomIn() {
+            if(mapState.zoomLevel < 3) {
+                mapState.zoomLevel += 0.2;
+                updateMapTransform();
+            }
+        }
+
+        function zoomOut() {
+            if(mapState.zoomLevel > 0.6) {
+                mapState.zoomLevel -= 0.2;
+                updateMapTransform();
+            }
+        }
+
+        function toggleSheet() {
+            // Toggle between 'sheet-full' (0%) and 'sheet-peek' (85%)
+            if (isSheetFull) {
+                // Collapse to peek
+                bottomSheet.classList.remove('sheet-full');
+                bottomSheet.classList.add('sheet-peek');
+                document.getElementById('sheet-hint').textContent = 'Tap to View Buses';
+            } else {
+                // Expand to full
+                bottomSheet.classList.remove('sheet-peek');
+                bottomSheet.classList.add('sheet-full');
+                document.getElementById('sheet-hint').textContent = 'Tap to View Map';
+            }
+            isSheetFull = !isSheetFull;
+        }
+
+        function recenterMap() {
+            // Reset zoom but keep route focus
+            mapState.zoomLevel = 1;
+            updateMapTransform();
+        }
 
         destSelect.addEventListener('change', (e) => {
             const dest = e.target.value;
             if(!dest) return;
 
-            // 1. Reset Map Pins
+            // Reset Map Pins
             document.querySelectorAll('.map-pin').forEach(pin => {
                 if(pin.id.startsWith('pin-')) pin.style.opacity = '0';
             });
 
-            // 2. Show New Pin & Animate Map
+            // Show New Pin
             const targetPin = document.getElementById(`pin-${dest}`);
             if(targetPin) targetPin.style.opacity = '1';
 
             let moveX = 0, moveY = 0;
             let pathD = "";
             
-            // Fixed Start Point (East Fort): approx 50% 81% -> x=200, y=648
-            // Map coordinates are based on viewBox 0 0 400 800
-            
             if(dest === 'Technopark') { 
                 moveX = 10; moveY = 10; 
-                // Pin 20% 20% -> x=80, y=160
                 pathD = "M 200 648 Q 150 400 80 160";
             }
             if(dest === 'LuluMall') { 
                 moveX = -10; moveY = 5; 
-                // Pin 80% 30% -> x=320, y=240
                 pathD = "M 200 648 Q 280 440 320 240";
             }
             if(dest === 'Kowdiar') { 
                 moveX = 5; moveY = -10; 
-                // Pin 70% 60% -> x=280, y=480
                 pathD = "M 200 648 Q 240 550 280 480";
             }
             
-            mapContainer.style.transform = `scale(1.2) translate(${moveX}%, ${moveY}%)`;
+            // Update Map State
+            mapState.baseX = moveX;
+            mapState.baseY = moveY;
+            mapState.zoomLevel = 1; // Reset zoom on route change
+            updateMapTransform();
             
-            // Update Route Line & Animation
             routeLine.setAttribute('d', pathD);
             routeLine.classList.remove('hidden');
             
             busAnimation.setAttribute('path', pathD);
             movingBus.classList.remove('hidden');
 
-            // 3. Render Bus List
+            // Render Bus List
             const data = busData[dest];
             document.getElementById('result-title').textContent = dest.replace('LuluMall', 'Lulu Mall');
             document.getElementById('result-eta').textContent = data.eta;
             
-            busList.innerHTML = ''; // Clear previous
+            busList.innerHTML = ''; 
             
             data.buses.forEach(bus => {
-                // Determine Crowd Color
                 let badgeColor = bus.color === 'red' ? 'bg-red-100 text-red-700' : 
                                  bus.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' : 
                                  'bg-green-100 text-green-700';
@@ -503,8 +741,12 @@
             });
             lucide.createIcons();
 
-            // 4. Slide up sheet
-            bottomSheet.style.transform = 'translateY(0%)';
+            // Slide up sheet to full
+            bottomSheet.classList.remove('sheet-hidden');
+            bottomSheet.classList.remove('sheet-peek');
+            bottomSheet.classList.add('sheet-full');
+            isSheetFull = true;
+            document.getElementById('sheet-hint').textContent = 'Tap to View Map';
         });
 
         // --- Booking Modal ---
@@ -513,7 +755,6 @@
             document.getElementById('modal-bus-name').textContent = busName;
             modal.classList.remove('hidden');
             
-            // Animation for modal
             const modalContent = modal.querySelector('div');
             setTimeout(() => {
                 modalContent.classList.remove('scale-90');
